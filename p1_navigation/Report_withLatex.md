@@ -19,12 +19,16 @@ In the following sections, I will discuss the implementation of the above DQN ar
 
 ### Learning Algorithm
 
-The main idea for various DQNs is to learn the action-value function, noted as <img src="./svgs/a18656976616796e481e7c608b8a2b40.svg" align=middle width=49.48137479999998pt height=24.65753399999998pt/> (<img src="./svgs/6f9bad7347b91ceebebd3ad7e6f6f2d1.svg" align=middle width=7.7054801999999905pt height=14.15524440000002pt/> is the current state and <img src="./svgs/44bc9d542a92714cac84e01cbbb7fd61.svg" align=middle width=8.68915409999999pt height=14.15524440000002pt/> is the corresponding action), using deep neural network as an non-linear approximation. Q-learning is a type of Temporal-Difference (TD) learning that learn from each step in a given learning episode.  Given a tuple of <img src="./svgs/e0d38b661c89bf91dd0d076749caf0f6.svg" align=middle width=119.46786884999997pt height=24.65753399999998pt/>, the Q-learning aims to update the following action-value table
-<p align="center"><img src="./svgs/2fbe3efbd752b2a147655796d44399a7.svg" align=middle width=474.70498514999997pt height=29.58934275pt/></p>
-where <img src="./svgs/e7b77ded6018d0dc509e61ffebc61518.svg" align=middle width=66.04313264999999pt height=22.465723500000017pt/> are the state, action, reward and <img src="./svgs/cf83185198a68ea312b2d4387b1af3fe.svg" align=middle width=31.68963764999999pt height=22.465723500000017pt/>  is the next state that follows. However, the above Q-table becomes infeasible as the dimension of state and action space increases.  Then as first proposed by the *[Deep Q learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)* paper, we attempt to approximate this Q-table using a deep network parameterized by a weight matrix, and iteratively update the weight parameter using the following rule:
-<p align="center"><img src="./svgs/6193ad8f85544bcec6aa565a710a7bcb.svg" align=middle width=480.68170425pt height=29.58934275pt/></p>
+The main idea for various DQNs is to learn the action-value function, noted as $Q(s,a)$ ($s$ is the current state and $a$ is the corresponding action), using deep neural network as an non-linear approximation. Q-learning is a type of Temporal-Difference (TD) learning that learn from each step in a given learning episode.  Given a tuple of $(S_t, A_t, R_t, S_{t+1})$, the Q-learning aims to update the following action-value table
+$$
+Q(S_t,A_t) \leftarrow Q(S_t, A_t) + \alpha \left(R_{t+1} + \gamma \max_{a} Q(S_{t+1}, a) - Q(S_t, A_t)\right)
+$$
+where $S_t, A_t, R_t$ are the state, action, reward at time step $t$ and $S_{t+1}$ is the next state that follows. However, the above Q-table becomes infeasible as the dimension of state and action space increases.  Then as first proposed by the  [Deep Q learning](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf) paper, we attempt to approximate this Q-table using a network $\hat{q}$ parameterized by a weight matrix $w$, and iteratively update the weight parameter using the following rule:
+$$
+\nabla w = \alpha \left(R_{t+1} + \gamma \max_{a} \hat{q}(S_{t+1}, a, w^{-}) - \hat{q}(S_t, A_t, w)\right) \nabla\hat{q}(S_t, A_t, w)
+$$
 
-where <img src="./svgs/d75649fbfd453bfa21eed2bb87fa9bf2.svg" align=middle width=22.48486679999999pt height=26.17730939999998pt/> are the weights of a fixed separate target network during the learning step, decoupling the target from the parameter updating step. 
+where $w^-$ are the weights of a fixed separate target network during the learning step, decoupling the target from the parameter updating step. 
 
 In the implementation, we use two feed-forward networks: one online network that is keeping on learning; the other target network whose parameters are set by the online network every few iteration. Since the two networks sometime share the same weights, their network architectures are the same and are specified as following:
 
@@ -32,22 +36,26 @@ In the implementation, we use two feed-forward networks: one online network that
 * Layer 2, Fully connected layer, Input dimension 128, Output dimension 64 with Relu activation;
 * Layer 3, Fully connected layer, Input dimension 64, Output dimension 4 (the size of the action space) with Relu activation.
 
-We also applied a technique called **experiences replays** (EP) to stabilize the training, where a EP buffer is used to store batches of <img src="./svgs/a06e37c55121bf5779c15d3be77939f4.svg" align=middle width=119.46786554999998pt height=24.65753399999998pt/> experience tuple from past episodes.  After running through a large number of episodes, we randomly sample a few experience tuples and learn from them to update the parameters of Q-network. This stochastic sampling breaks the sequential nature of experiences, reduce correlation, and stabilizes the learning process considerably. 
+We also applied a technique called **experiences replays** (EP) to stabilize the training, where a EP buffer is used to store batches of $\left(S_t, A_t, R_t, S_{t+1}\right)$ experience tuple from past episodes.  After running through a large number of episodes, we randomly sample a few experience tuples and learn from them to update the parameters of Q-network. This stochastic sampling breaks the sequential nature of experiences, reduce correlation, and stabilizes the learning process considerably. 
 
 To further improve performance of DQN, we implement two variants of it. 
 
 ## Double DQN
-Since the Vanilla DQN can overestimate the action-values. the paper *[Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461)*  proposed an alternative Q-target value which takes the action that maximizes the current Q network given the next state.  According to the paper, the weights <img src="./svgs/31fae8b8b78ebe01cbfbe2fe53832624.svg" align=middle width=12.210846449999991pt height=14.15524440000002pt/> is updated using the following gradient, instead.
-<p align="center"><img src="./svgs/525eaa0ab80383d19570c151fdf70a58.svg" align=middle width=593.42330355pt height=29.58934275pt/></p>
+Since the Vanilla DQN can overestimate the action-values. the paper *[Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461)*  proposed an alternative Q-target value which takes the action that maximizes the current Q network given the next state.  According to the paper, the weights $w$ is updated using the following gradient, instead.
+$$
+\nabla w = \alpha \left(R_{t+1} + \gamma \hat{q}\left(S_{t+1}, \arg\max_{a}\hat{q}(S_{t+1}, a, w), w^{-}\right) - \hat{q}(S_t, A_t, w)\right) \nabla\hat{q}(S_t, A_t, w)
+$$
 
 ## Dueling Network
 
-<img src="./images/dueling_network.png" alt="dueling network" style="zoom: 30%;"/>
+<img src="images/dueling_network.png" alt="dueling network" style="zoom: 40%;" />
 
-The *[Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/abs/1511.06581)* proposes a different neural network to approximate the Q functions. In the final layer, the dueling network separates the target into two tasks: (1) Estimate the state-value function, and (2) Estimate the the advantages for each action within the state. Then those two estimates are combined together and are used to approximate the Q-values as below:
-<p align="center"><img src="./svgs/41a4f167bb44e7065164c255c7befcec.svg" align=middle width=521.7990656999999pt height=43.76915895pt/></p>
+The  [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/abs/1511.06581) proposes a different neural network to approximate the Q functions. In the final layer, the dueling network separates the target into two tasks: (1) Estimate the state-value function, and (2) Estimate the the advantages for each action within the state. Then those two estimates are combined together and are used to approximate the Q-values as below:
+$$
+Q(S_t, A_t;w,\alpha,\beta) = V(S_t;w,\beta) +A(S_t, A_t;w,\alpha) - \dfrac{1}{|\mathcal{A}|} \sum_{a^{'}}A(S_t, a^{'};w,\alpha)
+$$
 
-<img src="./svgs/31fae8b8b78ebe01cbfbe2fe53832624.svg" align=middle width=12.210846449999991pt height=14.15524440000002pt/> is shared between those two networks (all the layers before the last layer), while  <img src="./svgs/c745b9b57c145ec5577b82542b2df546.svg" align=middle width=10.57650494999999pt height=14.15524440000002pt/> and <img src="./svgs/8217ed3c32a785f0b5aad4055f432ad8.svg" align=middle width=10.16555099999999pt height=22.831056599999986pt/> are the parameters of the two streams of the fully connected layers for estimating the state-value <img src="./svgs/4c88b510bc4f548b60c1ec2fbfc9c89d.svg" align=middle width=41.89507739999999pt height=24.65753399999998pt/> and advantage  <img src="./svgs/539452e6f183b66b5f4471c3ec75fecc.svg" align=middle width=58.03667099999999pt height=24.65753399999998pt/>, respectively. 
+$w$ is shared between those two networks (all the layers before the last layer), while  $\alpha$ and $\beta$ are the parameters of the two streams of the fully connected layers for estimating the state-value $V(S_t)$ and advantage  $A(S_,A_t)$, respectively. 
 
 ## Hyper-parameter Setting
 
@@ -83,7 +91,7 @@ I also plot the trace plot of reward versus the training episode overlaying the 
 
 If we plot the SMAs for all four methods together, we can see the following graph:
 
-<img src="images/compare.png" alt="compare" style="zoom:40%;" />
+<img src="images/compare.png" alt="compare" style="zoom:50%;" />
 
 where we can see when dueling is turned on the rewards start much higher than when without.  However, the benefits of double DQN is not significant better than the Vanilla DQN. This disadvantage might be due to this specific problem or because of some bug in my code. 
 
