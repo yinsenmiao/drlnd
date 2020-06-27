@@ -47,11 +47,11 @@ I applied decaying learning rate and random noise sampled from the Ornstein-Uhle
 
 |                 Training Scores v.s. Episode                 |                 Testing Scores v.s. Episode                  |
 | :----------------------------------------------------------: | :----------------------------------------------------------: |
-| <img src="training_epi.png" alt="training_epi" style="zoom:30%;" /> | <img src="testing_epi.png" alt="testing_epi" style="zoom:130%;" /> |
+| <img src="training_epi.png" alt="training_epi" style="zoom:40%;" /> | <img src="testing_epi.png" alt="testing_epi" style="zoom:200%;" /> |
 
 The DDPG performance for a part of the testing episode is demonstrated as the following video clip. We can see that two agents can keep the ball in play pretty well. And we can see that each agent forms every different strategies when playing the game.
 
-<img src="${images}/testing_demo.gif" alt="testing_demo" style="zoom:120%;" />
+<img src="testing_demo.gif" alt="testing_demo" style="zoom:120%;" />
 
 
 
